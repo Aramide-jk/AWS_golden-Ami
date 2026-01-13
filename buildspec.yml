@@ -1,35 +1,26 @@
 version: 0.2
-
+env:
+  variables:
+    IMAGE_NAME: Golden-Ami
+    LAUNCH_TEMPLATE_NAME: Version1
+    ASG_NAME: ASG
 phases:
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${COMMIT_HASH:=latest}
-      # Make scripts executable
-      - chmod +x scripts/*.sh
-      - echo "Made deployment scripts executable"
-      
   build:
     commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
-      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
-      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
-      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest
-      
-  post_build:
-    commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest
-      - echo Writing image definitions file for CodeDeploy...
-      - printf '{"ImageURI":"%s"}' $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest > imageDetail.json
-
-artifacts:
-  files:
-    - appspec.yml
-    - scripts/**/*
-    - imageDetail.json
+      - echo "Fetching latest Golden-Ami AMI from EC2..."
+      - AMI_ID=$(aws ec2 describe-images --owners self --filters "Name=name,Values=Golden-Ami*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
+      - echo "Latest AMI $AMI_ID"
+      - |
+        if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
+          echo "ERROR: No AMI found"
+          echo "Listing all AMIs with Golden-Ami in name:"
+          aws ec2 describe-images --owners self --filters "Name=name,Values=Golden-Ami*" --query "Images[*].[Name,ImageId,CreationDate]" --output table
+          exit 1
+        fi
+      - echo "Creating new launch template version..."
+      - aws ec2 create-launch-template-version --launch-template-name "$LAUNCH_TEMPLATE_NAME" --source-version \$Latest --launch-template-data "{\"ImageId\":\"$AMI_ID\"}"
+      - echo "Setting new version as default..."
+      - aws ec2 modify-launch-template --launch-template-name "$LAUNCH_TEMPLATE_NAME" --default-version \$Latest
+      - echo "Starting instance refresh..."
+      - aws autoscaling start-instance-refresh --auto-scaling-group-name "$ASG_NAME" --preferences '{"MinHealthyPercentage":100,"InstanceWarmup":300}'
+      - echo "Build completed successfully!"
