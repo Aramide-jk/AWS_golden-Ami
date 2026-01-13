@@ -4,7 +4,7 @@ env:
     IMAGE_NAME: Golden
     LAUNCH_TEMPLATE_NAME: Version1
     ASG_NAME: ASG
-    IMAGE_QUERY: 'imageVersionList[?name==`autobackedami`][-1].outputResources.amis[0].image'
+    IMAGE_QUERY: 'imageVersionList[?name==`Golden`][-1].outputResources.amis[0].image'
 phases:
   build:
     commands:
