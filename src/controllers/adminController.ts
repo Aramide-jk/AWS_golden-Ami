@@ -166,7 +166,8 @@ export const getAllCars = async (
     const limit = parseInt(req.query.limit as string) || 16;
     const skip = (page - 1) * limit;
 
-    const query = { status: "sold" };
+    // const query = { status: "available" };
+    const query = { status: "available" };
 
     const cars = await Car.find(query)
       .populate("createdBy", "name email")
