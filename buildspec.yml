@@ -7,14 +7,14 @@ env:
 phases:
   build:
     commands:
-      - echo "Fetching latest AMI from Image Builder..."
-      - AMI_ID=$(aws imagebuilder list-images --owner Self --query "imageVersionList[?name=='Golden-Ami'][-1].outputResources.amis[0].image" --output text)
+      - echo "Fetching latest Golden-Ami AMI from EC2..."
+      - AMI_ID=$(aws ec2 describe-images --owners self --filters "Name=name,Values=Golden-Ami*" --query "Images | sort_by(@, &CreationDate)[-1].ImageId" --output text)
       - echo "Latest AMI $AMI_ID"
       - |
         if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
-          echo "ERROR: No AMI found with name 'Golden-Ami'"
-          echo "Listing all Image Builder images:"
-          aws imagebuilder list-images --owner Self --query "imageVersionList[*].[name,outputResources.amis[0].image]" --output table
+          echo "ERROR: No AMI found"
+          echo "Listing all AMIs with Golden-Ami in name:"
+          aws ec2 describe-images --owners self --filters "Name=name,Values=Golden-Ami*" --query "Images[*].[Name,ImageId,CreationDate]" --output table
           exit 1
         fi
       - echo "Creating new launch template version..."
