@@ -3,22 +3,28 @@ version: 0.2
 env:
   variables:
     IMAGE_NAME: Golden
-    IMAGE_VERSION: "1.0.0"
-    LAUNCH_TEMPLATE_NAME: Version1
+    LAUNCH_TEMPLATE_NAME: version1
     ASG_NAME: ASG
 
 phases:
   build:
     commands:
-      - echo "Fetching latest AMI from Image Builder..."
+      - echo "==== Fetching latest AMI from Image Builder ===="
 
       - |
         AMI_ID=$(aws imagebuilder list-images \
           --owner Self \
-          --query "imageVersionList[?name=='$IMAGE_NAME'] | sort_by(@,&dateCreated)[-1].outputResources.amis[0].image" \
+          --query "imageVersionList[?name=='${IMAGE_NAME}'] | sort_by(@,&dateCreated)[-1].outputResources.amis[0].image" \
           --output text)
 
-      - echo "Latest AMI: $AMI_ID"
+        if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
+          echo "ERROR: No AMI found for Image Builder image: ${IMAGE_NAME}"
+          exit 1
+        fi
+
+        echo "Latest AMI ID: $AMI_ID"
+
+      - echo "==== Creating new Launch Template version ===="
 
       - |
         aws ec2 create-launch-template-version \
@@ -26,12 +32,18 @@ phases:
           --source-version '$Latest' \
           --launch-template-data "{\"ImageId\":\"$AMI_ID\"}"
 
+      - echo "==== Setting new Launch Template version as default ===="
+
       - |
         aws ec2 modify-launch-template \
           --launch-template-name "$LAUNCH_TEMPLATE_NAME" \
           --default-version '$Latest'
 
+      - echo "==== Starting ASG Instance Refresh ===="
+
       - |
         aws autoscaling start-instance-refresh \
           --auto-scaling-group-name "$ASG_NAME" \
-          --preferences '{"MinHealthyPercentage":100,"InstanceWarmup":300}'
+          --preferences '{"MinHealthyPercentage":90,"InstanceWarmup":300}'
+
+      - echo "==== Deployment completed successfully ===="
