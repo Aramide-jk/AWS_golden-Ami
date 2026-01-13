@@ -1,10 +1,10 @@
 version: 0.2
 env:
   variables:
-    IMAGE_NAME: Golden-Ami 2026-01-13T14-33-42.923Z
+    IMAGE_NAME: Golden-Ami
     LAUNCH_TEMPLATE_NAME: Version1
     ASG_NAME: ASG
-    IMAGE_QUERY: "imageVersionList[?name=='Golden-Ami 2026-01-13T14-33-42.923Z'][-1].outputResources.amis[0].image"
+    IMAGE_QUERY: "imageVersionList[?name=='Golden-Ami'][-1].outputResources.amis[0].image"
 phases:
   build:
     commands:
