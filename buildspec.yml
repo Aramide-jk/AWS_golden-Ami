@@ -2,7 +2,7 @@ version: 0.2
 env:
   variables:
     IMAGE_NAME: Golden
-    LAUNCH_TEMPLATE_NAME: version1
+    LAUNCH_TEMPLATE_NAME: Version1
     ASG_NAME: ASG
     IMAGE_QUERY: 'imageVersionList[?name==`autobackedami`][-1].outputResources.amis[0].image'
 phases:
