@@ -12,12 +12,12 @@ phases:
     commands:
       - echo "Fetching latest AMI from Image Builder..."
 
-      - AMI_ID=$(aws imagebuilder list-images --owner Self --query "imageVersionList[?name=='$IMAGE_NAME'] | sort_by(@,&dateCreated)[-1].outputResources.amis[0].image" --output text)
+      - "AMI_ID=$(aws imagebuilder list-images --owner Self --query \"imageVersionList[?name=='$IMAGE_NAME'] | sort_by(@,&dateCreated)[-1].outputResources.amis[0].image\" --output text)"
 
       - echo "Latest AMI: $AMI_ID"
 
-      - aws ec2 create-launch-template-version --launch-template-name "$LAUNCH_TEMPLATE_NAME" --source-version '$Latest' --launch-template-data "{\"ImageId\":\"$AMI_ID\"}"
+      - "aws ec2 create-launch-template-version --launch-template-name \"$LAUNCH_TEMPLATE_NAME\" --source-version '$Latest' --launch-template-data \"{\\\"ImageId\\\":\\\"$AMI_ID\\\"}\""
 
-      - aws ec2 modify-launch-template --launch-template-name "$LAUNCH_TEMPLATE_NAME" --default-version '$Latest'
+      - "aws ec2 modify-launch-template --launch-template-name \"$LAUNCH_TEMPLATE_NAME\" --default-version '$Latest'"
 
-      - aws autoscaling start-instance-refresh --auto-scaling-group-name "$ASG_NAME" --preferences '{"MinHealthyPercentage":100,"InstanceWarmup":300}'
+      - "aws autoscaling start-instance-refresh --auto-scaling-group-name \"$ASG_NAME\" --preferences '{\"MinHealthyPercentage\":90,\"InstanceWarmup\":300}'"
