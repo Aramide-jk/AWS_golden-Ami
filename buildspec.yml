@@ -4,13 +4,18 @@ env:
     IMAGE_NAME: Golden
     LAUNCH_TEMPLATE_NAME: Version1
     ASG_NAME: ASG
-    IMAGE_QUERY: 'imageVersionList[?name==`Golden`][-1].outputResources.amis[0].image'
+    IMAGE_QUERY: "imageVersionList[?name=='Golden'][-1].outputResources.amis[0].image"
 phases:
   build:
     commands:
       - echo "Fetching latest AMI from Image Builder..."
       - AMI_ID=$(aws imagebuilder list-images --owner Self --query "$IMAGE_QUERY" --output text)
       - echo "Latest AMI $AMI_ID"
+      - |
+        if [ -z "$AMI_ID" ] || [ "$AMI_ID" = "None" ]; then
+          echo "ERROR: No AMI found"
+          exit 1
+        fi
       - echo "Creating new launch template version..."
       - aws ec2 create-launch-template-version --launch-template-name "$LAUNCH_TEMPLATE_NAME" --source-version \$Latest --launch-template-data "{\"ImageId\":\"$AMI_ID\"}"
       - echo "Setting new version as default..."
