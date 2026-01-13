@@ -1,0 +1,13 @@
+name: base-os-and-tools
+description: Update OS and install base packages
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: UpdateOS
+        action: ExecuteBash
+        inputs:
+          commands:
+            - dnf update -y
+            - dnf install -y git

@@ -1,0 +1,66 @@
+name: backend-systemd
+description: Configure fetch_env.sh and backend systemd service
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: CreateFetchEnvScript
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              cat << 'EOF' > /opt/backend/fetch_env.sh
+              #!/bin/bash
+              APP_DIR="/opt/backend"
+              ENV_FILE="$APP_DIR/.env"
+
+              ALLOWED_ORIGINS=$(aws ssm get-parameter --name "/prod/backend/ALLOWED_ORIGINS" --query "Parameter.Value" --output text)
+              FRONTEND_URL=$(aws ssm get-parameter --name "/prod/backend/FRONTEND_URL" --query "Parameter.Value" --output text)
+              FRONTEND_URL2=$(aws ssm get-parameter --name "/prod/backend/FRONTEND_URL2" --query "Parameter.Value" --output text)
+              JWT_SECRET=$(aws ssm get-parameter --name "/prod/backend/JWT_SECRET" --with-decryption --query "Parameter.Value" --output text)
+              MONGO_URI=$(aws ssm get-parameter --name "/prod/backend/MONGO_URI" --with-decryption --query "Parameter.Value" --output text)
+              NODE_ENV=$(aws ssm get-parameter --name "/prod/backend/NODE_ENV" --query "Parameter.Value" --output text)
+              PORT=$(aws ssm get-parameter --name "/prod/backend/PORT" --query "Parameter.Value" --output text)
+
+              cat <<EOT > $ENV_FILE
+              ALLOWED_ORIGINS=$ALLOWED_ORIGINS
+              FRONTEND_URL=$FRONTEND_URL
+              FRONTEND_URL2=$FRONTEND_URL2
+              JWT_SECRET=$JWT_SECRET
+              MONGO_URI=$MONGO_URI
+              NODE_ENV=$NODE_ENV
+              PORT=$PORT
+              EOT
+
+              chmod 600 $ENV_FILE
+              chown ec2-user:ec2-user $ENV_FILE
+              EOF
+
+            - chmod +x /opt/backend/fetch_env.sh
+            - chown ec2-user:ec2-user /opt/backend/fetch_env.sh
+
+      - name: CreateSystemdService
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              cat << 'EOF' > /etc/systemd/system/backend.service
+              [Unit]
+              Description=Node Backend Service
+              After=network.target
+
+              [Service]
+              Type=simple
+              User=ec2-user
+              WorkingDirectory=/opt/backend
+              ExecStartPre=/opt/backend/fetch_env.sh
+              ExecStart=/usr/bin/node /opt/backend/dist/server.js
+              Restart=always
+
+              [Install]
+              WantedBy=multi-user.target
+              EOF
+
+            - systemctl daemon-reload
+            - systemctl enable backend

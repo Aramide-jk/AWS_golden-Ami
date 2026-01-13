@@ -1,0 +1,30 @@
+name: backend-build
+description: Clone backend repo and build application
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: SetupBackendDir
+        action: ExecuteBash
+        inputs:
+          commands:
+            - mkdir -p /opt/backend
+            - chown ec2-user:ec2-user /opt/backend
+
+      - name: CloneRepo
+        action: ExecuteBash
+        inputs:
+          commands:
+            - cd /opt/backend
+            - rm -rf ./*
+            - git clone https://github.com/Aramide-jk/AWS_golden-Ami .
+            - chown -R ec2-user:ec2-user /opt/backend
+
+      - name: InstallDependencies
+        action: ExecuteBash
+        inputs:
+          commands:
+            - cd /opt/backend
+            - npm install
+            - npm run build

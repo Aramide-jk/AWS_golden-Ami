@@ -4,12 +4,15 @@ import Car from "../models/CarModel";
 export const getSoldCars = async (req: Request, res: Response) => {
   try {
     const cars = await Car.find({ status: "sold" }).sort({ updatedAt: -1 });
-    res.status(200).json({
-      success: true,
-      count: cars.length,
-      data: cars,
-      message: "Sold cars fetched successfully",
-    });
+    // I only want to show 2 sold cars
+    const limitedCars = cars.slice(0, 2);
+    res.status(200).json(limitedCars);
+    // res.status(200).json({
+    //   success: true,
+    //   count: cars.length,
+    //   data: cars,
+    //   message: "Sold cars fetched successfully",
+    // });
     console.log("Sold cars fetched successfully");
   } catch (error) {
     console.error("Error fetching sold cars:", error);
